@@ -7,7 +7,7 @@
  */
 #include <LiquidCrystal.h>
 const int RS = 39, EN = 41, D4 = 31, D5 = 33, D6 = 35, D7 = 37; 
-LiquidCrystal lcd(RS, EN, D4, D5, D6, D7);
+LiquidCrystal display(RS, EN, D4, D5, D6, D7);
 
 /**
  * LED System !!!NEED DOCUMENTATION/REFERENCE SHEET NEEDED!!!
@@ -19,33 +19,36 @@ volatile unsigned char* PORT_C = (unsigned char*) 0x28;
 volatile unsigned char* DDR_C = (unsigned char*) 0x27; 
 
 /**
- * Function Definitions
- */
-//Register Manipulators
-void writeRegister(unsigned char* address, int bit, int value);
-int readRegister(unsigned char* address, int bit);
-
-/**
- * Stepper Motor
+ * Stepper Motor !!!NEED DOCUMENTATION/REFERENCE SHEET NEEDED!!!
  */
 #include <Stepper.h>
 const int stepsPerRevolution = 2038;
 Stepper  ventMotor = Stepper(stepsPerRevolution, 45, 47, 49, 51);
 
 /**
- * DHT11 Water Sensor
+ * DHT11 Water Sensor !!!NEED DOCUMENTATION/REFERENCE SHEET NEEDED!!!
  */
 #include <dht.h>
+const int DHT11_PIN = 54; //Pin A0
+dht DHT_Sensor;
+
+/**
+ * Function Definitions
+ */
+//Register Manipulators
+void writeRegister(unsigned char* address, int bit, int value);
+int readRegister(unsigned char* address, int bit);
+
 
 
 void setup(){
     Serial.begin(9600);
 
-    lcd.begin(16,2);
-    lcd.clear();
+    display.begin(16,2);
+    display.clear();
     
     //Testing Display
-    lcd.write("Hello World!");
+    display.write("Hello World!");
 
     //LED Testing (DIGITAL 30,32,34,36 respectively)
     writeRegister(DDR_C, 7, 1);
@@ -61,12 +64,26 @@ void setup(){
     //Motor Testing
     ventMotor.setSpeed(5);
     ventMotor.step(stepsPerRevolution);
-    
-    delay(1000);
 }
 
 void loop(){
+    int chk = DHT_Sensor.read11(DHT11_PIN);
+    int temperature = DHT_Sensor.temperature; //Already at integer precision
+    int humidity = DHT_Sensor.humidity; //So no information lost doing this
 
+    display.clear();
+
+    display.setCursor(0,0);
+    display.print("TEMP:: ");
+    display.print(temperature);
+    display.print("C");
+
+    display.setCursor(0,1);
+    display.print("HUMIDITY:: ");
+    display.print(humidity);
+    display.print("%");
+
+    delay(100);
 }
 
 ISR(TIMER1_OVF_vect)
