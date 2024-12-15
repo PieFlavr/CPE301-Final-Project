@@ -33,11 +33,21 @@ const int DHT11_PIN = 54; //Pin A0
 dht DHT_Sensor;
 
 /**
+ * @brief Water Level Sensor !!!NEED DOCUMENTATION/REFERENCE SHEET NEEDED!!!
+ * 
+ */
+// ADC Registers
+volatile unsigned char* my_ADMUX = (unsigned char*) 0x7C;    // ADC Multiplexer Selection Register
+volatile unsigned char* my_ADCSRB = (unsigned char*) 0x7B;   // ADC Control and Status Register B
+volatile unsigned char* my_ADCSRA = (unsigned char*) 0x7A;   // ADC Control and Status Register A
+volatile unsigned int* my_ADC_DATA = (unsigned int*) 0x78;   // ADC Data Register
+
+/**
  * Function Definitions
  */
 //Register Manipulators
 void writeRegister(unsigned char* address, int bit, int value);
-int readRegister(unsigned char* address, int bit);
+unsigned int readRegister(unsigned char* address, int bit);
 
 
 
@@ -62,8 +72,10 @@ void setup(){
     writeRegister(PORT_C, 1, 0);
 
     //Motor Testing
-    ventMotor.setSpeed(5);
-    ventMotor.step(stepsPerRevolution);
+    //ventMotor.setSpeed(5);
+    //ventMotor.step(stepsPerRevolution);
+
+    ADC_setup();
 }
 
 void loop(){
@@ -83,6 +95,10 @@ void loop(){
     display.print(humidity);
     display.print("%");
 
+    //TEMPORARY WATER LEVEL TESTING
+    int testValue = adc_read(1);
+    Serial.println(testValue); //100 lower bound, 300 upper bound calibration
+
     delay(100);
 }
 
@@ -92,18 +108,61 @@ ISR(TIMER1_OVF_vect)
 }
 
 /**
+ * @brief Initializes the ADC primarily for the water level sensor.
+ */
+void ADC_setup()
+{
+  *my_ADCSRA |= 0b10000000;   // Enable ADC by setting bit 7
+  *my_ADCSRA &= 0b11011111;   // Disable ADC trigger mode (bit 6)
+  *my_ADCSRA &= 0b11110111;   // Disable ADC interrupt (bit 5)
+  *my_ADCSRA &= 0b11111000;   // Reset prescaler
+  *my_ADCSRA |= 0b00000111;   // Set prescaler to 128
+
+  *my_ADCSRB &= 0b11110111;   // Reset channel and gain bits in ADCSRB
+  *my_ADCSRB &= 0b11111000;   // Set ADC to free running mode
+
+  *my_ADMUX  &= 0b01111111;   // Set AVCC as analog reference by clearing bit 7
+  *my_ADMUX  |= 0b01000000;   // Set AVCC as analog reference by setting bit 6
+  *my_ADMUX  &= 0b11011111;   // Right adjust ADC result (clear bit 5)
+  *my_ADMUX  &= 0b11100000;   // Clear channel selection bits in ADMUX
+}
+
+/**
  * @brief Reads a specific bit from a register. 
  * 
  * @param address Pointer to the register's address.
  * @param bit The bit position to read (0-7).
  * @return int Returns 1 if the bit is set, 0 otherwise.
  */
-int readRegister(unsigned char* address, int bit) {
+unsigned int readRegister(unsigned char* address, int bit) {
     //Returns 1 if the bit is set, 0 otherwise
     return (*address & (1 << bit)) ? 1 : 0;  
 }
 
-/// IMPLEMENT ANALOG READ LATER
+/**
+ * @brief Uses the ADC to read and return the analog data !!!REDO COMMENTS!!!
+ * 
+ * @param ADC_PIN The specific analog pin number being read from.
+ * @return unsigned int Returns a range from 0 to 1023
+ */
+unsigned int adc_read(unsigned char adc_channel_num)
+{
+  *my_ADMUX  &= 0b11100000;   // Clear channel selection bits (MUX 4:0)
+  *my_ADCSRB &= 0b11110111;   // Clear MUX 5 bit
+
+  if(adc_channel_num > 7)
+  {
+    adc_channel_num -= 8;        // Adjust channel number for high channels
+    *my_ADCSRB |= 0b00001000;    // Set MUX 5 bit for high channels
+  }
+  
+  *my_ADMUX  += adc_channel_num; // Set MUX bits to select the channel
+  *my_ADCSRA |= 0x40;            // Start ADC conversion by setting bit 6
+
+  while((*my_ADCSRA & 0x40) != 0); // Wait for conversion to complete
+
+  return *my_ADC_DATA;           // Return ADC result
+}
 
 /**
  * @brief Writes a specific value (1 or 0) to a bit in a register.
