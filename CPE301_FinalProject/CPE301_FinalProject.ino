@@ -1,27 +1,46 @@
 // CPE 301 Final Project
 // Written by Lucas Pinto and Finn Campbell
 
-//LCD Display Includes !!!NEED DOCUMENTATION/REFERENCE SHEET!!!
-//LCD additionallu uses a 330 OHM resistor
+/**
+ * LCD Display Includes !!!NEED DOCUMENTATION/REFERENCE SHEET!!!
+ * ..> LCD additionallu uses a 330 OHM resistor
+ */
 #include <LiquidCrystal.h>
-//const int RS = 11, EN = 12, D4 = 2, D5 = 3, D6 = 4, D7 = 5;
-
 const int RS = 39, EN = 41, D4 = 31, D5 = 33, D6 = 35, D7 = 37; 
 LiquidCrystal lcd(RS, EN, D4, D5, D6, D7);
 
-//LED System !!!NEED DOCUMENTATION/REFERENCE SHEET NEEDED!!!
-// const int LED_R = 30, LED_Y = 32, LED_G = 34, LED_B = 36;
-// DIGITAL PINs 30-37 correspond to BITs 7-0 
-// (30~7 ; 31~6 ; 32~5 ; 33~4 ; 34~3 ; 35~2 ; 36~1 ; 37~0)
+/**
+ * LED System !!!NEED DOCUMENTATION/REFERENCE SHEET NEEDED!!!
+ * ..> const int LED_R = 30, LED_Y = 32, LED_G = 34, LED_B = 36;
+ * DIGITAL PINs 30-37 correspond to BITs 7-0 
+ * ..> (30~7 ; 31~6 ; 32~5 ; 33~4 ; 34~3 ; 35~2 ; 36~1 ; 37~0)
+ */
 volatile unsigned char* PORT_C = (unsigned char*) 0x28;
 volatile unsigned char* DDR_C = (unsigned char*) 0x27; 
 
-//Function Prototypes
+/**
+ * Function Definitions
+ */
 //Register Manipulators
 void writeRegister(unsigned char* address, int bit, int value);
 int readRegister(unsigned char* address, int bit);
 
+/**
+ * Stepper Motor
+ */
+#include <Stepper.h>
+const int stepsPerRevolution = 2038;
+Stepper  ventMotor = Stepper(stepsPerRevolution, 45, 47, 49, 51);
+
+/**
+ * DHT11 Water Sensor
+ */
+#include <dht.h>
+
+
 void setup(){
+    Serial.begin(9600);
+
     lcd.begin(16,2);
     lcd.clear();
     
@@ -38,6 +57,12 @@ void setup(){
     writeRegister(PORT_C, 5, 0);
     writeRegister(PORT_C, 3, 0);
     writeRegister(PORT_C, 1, 0);
+
+    //Motor Testing
+    ventMotor.setSpeed(5);
+    ventMotor.step(stepsPerRevolution);
+    
+    delay(1000);
 }
 
 void loop(){
