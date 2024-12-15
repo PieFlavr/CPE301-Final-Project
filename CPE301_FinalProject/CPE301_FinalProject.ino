@@ -9,9 +9,17 @@
 const int RS = 39, EN = 41, D4 = 31, D5 = 33, D6 = 35, D7 = 37; 
 LiquidCrystal lcd(RS, EN, D4, D5, D6, D7);
 
-//LED System
-//temporary pins, replace with register macros later
-const int LED_R = 30, LED_Y = 32, LED_G = 34, LED_B = 36;
+//LED System !!!NEED DOCUMENTATION/REFERENCE SHEET NEEDED!!!
+// const int LED_R = 30, LED_Y = 32, LED_G = 34, LED_B = 36;
+// DIGITAL PINs 30-37 correspond to BITs 7-0 
+// (30~7 ; 31~6 ; 32~5 ; 33~4 ; 34~3 ; 35~2 ; 36~1 ; 37~0)
+volatile unsigned char* PORT_C = (unsigned char*) 0x28;
+volatile unsigned char* DDR_C = (unsigned char*) 0x27; 
+
+//Function Prototypes
+//Register Manipulators
+void writeRegister(unsigned char* address, int bit, int value);
+int readRegister(unsigned char* address, int bit);
 
 void setup(){
     lcd.begin(16,2);
@@ -20,16 +28,16 @@ void setup(){
     //Testing Display
     lcd.write("Hello World!");
 
-    //Temporary LED Pin Testing
-    pinMode(LED_R, OUTPUT);
-    pinMode(LED_Y, OUTPUT);
-    pinMode(LED_G, OUTPUT);
-    pinMode(LED_B, OUTPUT);
+    //LED Testing (DIGITAL 30,32,34,36 respectively)
+    writeRegister(DDR_C, 7, 1);
+    writeRegister(DDR_C, 5, 1);
+    writeRegister(DDR_C, 3, 1);
+    writeRegister(DDR_C, 1, 1);
 
-    digitalWrite(LED_R, HIGH);
-    digitalWrite(LED_Y, HIGH);
-    digitalWrite(LED_G, HIGH);
-    digitalWrite(LED_B, HIGH);
+    writeRegister(PORT_C, 7, 0);
+    writeRegister(PORT_C, 5, 0);
+    writeRegister(PORT_C, 3, 0);
+    writeRegister(PORT_C, 1, 0);
 }
 
 void loop(){
@@ -39,4 +47,17 @@ void loop(){
 ISR(TIMER1_OVF_vect)
 {
 
+}
+
+int readRegister(unsigned char* address, int bit) {
+    //Returns 1 if the bit is set, 0 otherwise
+    return (*address & (1 << bit)) ? 1 : 0;  
+}
+
+void writeRegister(unsigned char* address, int bit, int value) {
+    if (value == 1) {
+        *address |= (1 << bit);  //Set the bit to 1 (HIGH)
+    } else {
+        *address &= ~(1 << bit);  //Set the bit to 0 (LOW)
+    }
 }
