@@ -45,7 +45,7 @@ volatile unsigned int* my_ADC_DATA = (unsigned int*) 0x78;   // ADC Data Registe
 /**
  * Function Definitions
  */
-//Register Manipulators
+// Register Manipulators
 void writeRegister(unsigned char* address, int bit, int value);
 unsigned int readRegister(unsigned char* address, int bit);
 
@@ -57,10 +57,10 @@ void setup(){
     display.begin(16,2);
     display.clear();
     
-    //Testing Display
+    // Testing Display
     display.write("Hello World!");
 
-    //LED Testing (DIGITAL 30,32,34,36 respectively)
+    // LED Testing (DIGITAL 30,32,34,36 respectively)
     writeRegister(DDR_C, 7, 1);
     writeRegister(DDR_C, 5, 1);
     writeRegister(DDR_C, 3, 1);
@@ -80,8 +80,8 @@ void setup(){
 
 void loop(){
     int chk = DHT_Sensor.read11(DHT11_PIN);
-    int temperature = DHT_Sensor.temperature; //Already at integer precision
-    int humidity = DHT_Sensor.humidity; //So no information lost doing this
+    int temperature = DHT_Sensor.temperature; // Already at integer precision
+    int humidity = DHT_Sensor.humidity; // So no information lost doing this
 
     display.clear();
 
