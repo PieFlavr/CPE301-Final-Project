@@ -1,5 +1,14 @@
 // CPE 301 Final Project
 // Written by Lucas Pinto and Finn Campbell
+/**
+ * @file CPE301_FinalProject.ino
+ * @author Lucas Pinto and Finn Campbell
+ * @brief Final project for CPE301 Fall 2024. 
+ *          TO-DO-LIST : clean up everything, implement systems mechanics, push-button interrupt, and potentiometer reading for stepper motor adjust.
+ * @version 1.0
+ * @date 2024-12-15
+ * 
+ */
 
 /**
  * LCD Display Includes !!!NEED DOCUMENTATION/REFERENCE SHEET!!!
