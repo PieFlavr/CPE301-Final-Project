@@ -49,11 +49,27 @@ ISR(TIMER1_OVF_vect)
 
 }
 
+/**
+ * @brief Reads a specific bit from a register. 
+ * 
+ * @param address Pointer to the register's address.
+ * @param bit The bit position to read (0-7).
+ * @return int Returns 1 if the bit is set, 0 otherwise.
+ */
 int readRegister(unsigned char* address, int bit) {
     //Returns 1 if the bit is set, 0 otherwise
     return (*address & (1 << bit)) ? 1 : 0;  
 }
 
+/// IMPLEMENT ANALOG READ LATER
+
+/**
+ * @brief Writes a specific value (1 or 0) to a bit in a register.
+ * 
+ * @param address Pointer to the register's address.
+ * @param bit The bit position to modify (0-7).
+ * @param value The value to write (1 to set the bit, 0 to clear it).
+ */
 void writeRegister(unsigned char* address, int bit, int value) {
     if (value == 1) {
         *address |= (1 << bit);  //Set the bit to 1 (HIGH)
