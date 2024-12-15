@@ -11,7 +11,7 @@ LiquidCrystal display(RS, EN, D4, D5, D6, D7);
 
 /**
  * LED System !!!NEED DOCUMENTATION/REFERENCE SHEET NEEDED!!!
- * ..> const int LED_R = 30, LED_Y = 32, LED_G = 34, LED_B = 36;
+ * ..> const int LED_R = 30, LED_Y = 32, LED_G = 34, LED_B = 36
  * DIGITAL PINs 30-37 correspond to BITs 7-0 
  * ..> (30~7 ; 31~6 ; 32~5 ; 33~4 ; 34~3 ; 35~2 ; 36~1 ; 37~0)
  */
@@ -24,6 +24,11 @@ volatile unsigned char* DDR_C = (unsigned char*) 0x27;
 #include <Stepper.h>
 const int stepsPerRevolution = 2038;
 Stepper  ventMotor = Stepper(stepsPerRevolution, 45, 47, 49, 51);
+
+/**
+ * Fan Motor !!!NEED DOCUMENTATION/REFERENCE SHEET NEEDDED!!!
+ */
+const int fanSpeedPIN = 12, fanDIR1 = 11, fanDIR2 = 13, fanSpeed = 90;
 
 /**
  * DHT11 Water Sensor !!!NEED DOCUMENTATION/REFERENCE SHEET NEEDED!!!
@@ -49,8 +54,6 @@ volatile unsigned int* my_ADC_DATA = (unsigned int*) 0x78;   // ADC Data Registe
 void writeRegister(unsigned char* address, int bit, int value);
 unsigned int readRegister(unsigned char* address, int bit);
 
-
-
 void setup(){
     Serial.begin(9600);
 
@@ -71,18 +74,26 @@ void setup(){
     writeRegister(PORT_C, 3, 0);
     writeRegister(PORT_C, 1, 0);
 
-    //Motor Testing
+    //Stepper Motor Testing
     //ventMotor.setSpeed(5);
     //ventMotor.step(stepsPerRevolution);
 
+    //Fan Motor Testing
+    pinMode(fanSpeedPIN, OUTPUT);
+    pinMode(fanDIR1, OUTPUT);
+    pinMode(fanDIR2, OUTPUT);
+
+    //Analog Read Setup
     ADC_setup();
 }
 
 void loop(){
+    //Temperature Sensing
     int chk = DHT_Sensor.read11(DHT11_PIN);
     int temperature = DHT_Sensor.temperature; // Already at integer precision
     int humidity = DHT_Sensor.humidity; // So no information lost doing this
 
+    //LCD Printout
     display.clear();
 
     display.setCursor(0,0);
@@ -98,6 +109,11 @@ void loop(){
     //TEMPORARY WATER LEVEL TESTING
     int testValue = adc_read(1);
     Serial.println(testValue); //100 lower bound, 300 upper bound calibration
+
+    //Fan Motor Testing
+    digitalWrite(fanDIR1,LOW);
+    digitalWrite(fanDIR2,HIGH);
+    analogWrite(fanSpeedPIN,255);
 
     delay(100);
 }
