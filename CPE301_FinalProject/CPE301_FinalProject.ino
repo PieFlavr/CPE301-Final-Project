@@ -38,6 +38,14 @@ const int DHT11_PIN = 54; //Pin A0
 dht DHT_Sensor;
 
 /**
+ * RTC Clock
+ */
+#include <RTClib.h>
+RTC_DS1307 rtc;
+char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday",
+"Friday", "Saturday"};
+
+/**
  * @brief Water Level Sensor !!!NEED DOCUMENTATION/REFERENCE SHEET NEEDED!!!
  * 
  */
@@ -56,6 +64,8 @@ unsigned int readRegister(unsigned char* address, int bit);
 
 void setup(){
     Serial.begin(9600);
+
+    rtc.begin();
 
     display.begin(16,2);
     display.clear();
@@ -113,7 +123,24 @@ void loop(){
     //Fan Motor Testing
     digitalWrite(fanDIR1,LOW);
     digitalWrite(fanDIR2,HIGH);
-    analogWrite(fanSpeedPIN,255);
+    analogWrite(fanSpeedPIN,0);
+
+    //RTC Testing
+    DateTime now = rtc.now();
+    Serial.print(now.year(), DEC);
+    Serial.print('/');
+    Serial.print(now.month(), DEC);
+    Serial.print('/');
+    Serial.print(now.day(), DEC);
+    Serial.print(" (");
+    Serial.print(daysOfTheWeek[now.dayOfTheWeek()]);
+    Serial.print(") ");
+    Serial.print(now.hour(), DEC);
+    Serial.print(':');
+    Serial.print(now.minute(), DEC);
+    Serial.print(':');
+    Serial.print(now.second(), DEC);
+    Serial.println();
 
     delay(100);
 }
