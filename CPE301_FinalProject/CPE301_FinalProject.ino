@@ -291,83 +291,91 @@ void writeRegister(unsigned char* address, int bit, int value) {
 }
 
 /**
- * @brief 
- * 
+ * @brief Resets the reset counter on a button press.
+ *        This function is triggered by an interrupt from a reset button.
+ *        It increments a global variable `resetti` each time it is called.
  */
 void reset(){
     resetti++; // Increment reset count on button press
 }
 
 /**
- * @brief 
+ * @brief Initializes the UART0 communication with a specified baud rate.
+ *        This function configures the UART registers, calculates the baud rate,
+ *        and sets up the transmission and reception mode.
  * 
- * @param U0baud 
+ * @param U0baud The desired baud rate for UART communication (e.g., 9600).
  */
 void U0init(int U0baud)
 {
- unsigned long FCPU = 16000000;           // CPU frequency
- unsigned int tbaud = (FCPU / 16 / U0baud - 1); // Calculate baud rate
+    unsigned long FCPU = 16000000;           // CPU frequency (16 MHz)
+    unsigned int tbaud = (FCPU / 16 / U0baud - 1); // Calculate baud rate setting based on desired baud rate
 
- *myUCSR0A = 0x20; // Set UART Control and Status Register A
- *myUCSR0B = 0x18; // Enable receiver and transmitter
- *myUCSR0C = 0x06; // Set UART mode and data format
- *myUBRR0  = tbaud; // Set calculated baud rate
+    *myUCSR0A = 0x20; // Set UART Control and Status Register A to configure the UART settings
+    *myUCSR0B = 0x18; // Enable the receiver and transmitter for UART communication
+    *myUCSR0C = 0x06; // Set UART mode and data format (8 data bits, 1 stop bit, no parity)
+    *myUBRR0  = tbaud; // Set the calculated baud rate into the UART Baud Rate Register
 }
 
 /**
- * @brief 
+ * @brief Checks if there is data available in the UART receive buffer.
+ *        This function checks the RDA (Receive Data Available) flag in the UART status register.
  * 
- * @return unsigned char 
+ * @return unsigned char Returns a non-zero value if data is available to be read.
  */
 unsigned char U0kbhit()
 {
-  return *myUCSR0A & RDA; // Check RDA flag
+    return *myUCSR0A & RDA; // Check RDA flag in UART status register to see if data is available
 }
 
 /**
- * @brief 
+ * @brief Reads a byte of data from the UART Data Register.
+ *        This function retrieves the byte of data from the UART receiver.
  * 
- * @return unsigned char 
+ * @return unsigned char The byte of data received from the UART buffer.
  */
 unsigned char U0getchar()
 {
-  return *myUDR0; // Return data from UART Data Register
+    return *myUDR0; // Return the data stored in the UART Data Register (received byte)
 }
 
 /**
- * @brief 
+ * @brief Sends a byte of data via UART.
+ *        This function waits for the transmit buffer to be empty and then sends the data byte.
  * 
- * @param U0pdata 
+ * @param U0pdata The byte of data to be transmitted via UART.
  */
 void U0putchar(unsigned char U0pdata)
 {
-  while((*myUCSR0A & TBE) == 0); // Wait until transmit buffer is empty
-  *myUDR0 = U0pdata;             // Load data into UART Data Register
+    while((*myUCSR0A & TBE) == 0); // Wait until the transmit buffer is empty (TBE flag is set)
+    *myUDR0 = U0pdata;             // Load the data byte into the UART Data Register to transmit
 }
 
 /**
- * @brief 
+ * @brief Prints a string via UART.
+ *        This function transmits each character of the input string until the null terminator is reached.
  * 
- * @param cstring 
+ * @param cstring A pointer to the null-terminated string to be printed.
  */
 void UART_print(unsigned char* cstring){
-  int i = 0;
-  while(cstring[i] != '\0'){      // Loop until null terminator
-    U0putchar((unsigned char)(cstring[i])); // Transmit each character
-    i++;
-  }
+    int i = 0;
+    while(cstring[i] != '\0'){      // Loop until null terminator is reached
+        U0putchar((unsigned char)(cstring[i])); // Transmit each character of the string
+        i++;
+    }
 }
 
 /**
- * @brief 
+ * @brief Prints a string followed by a newline via UART.
+ *        This function transmits each character of the input string and then sends a newline character.
  * 
- * @param cstring 
+ * @param cstring A pointer to the null-terminated string to be printed.
  */
 void UART_println(unsigned char* cstring){
-  int i = 0;
-  while(cstring[i] != '\0'){      // Loop until null terminator
-    U0putchar((unsigned char)(cstring[i])); // Transmit each character
-    i++;
-  }
-  U0putchar('\n');
+    int i = 0;
+    while(cstring[i] != '\0'){      // Loop until null terminator is reached
+        U0putchar((unsigned char)(cstring[i])); // Transmit each character of the string
+        i++;
+    }
+    U0putchar('\n'); // Send a newline character at the end of the string
 }
