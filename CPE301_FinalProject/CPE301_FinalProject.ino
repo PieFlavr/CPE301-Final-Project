@@ -124,7 +124,7 @@ volatile bool stepperState = 0;
 volatile bool previousStepperState = 0;
 
 volatile unsigned long previousTime = 0;
-volatile const long updateTime = 6000; //About a minute
+volatile const long updateTime = 100; //About a minute
 
 void setup(){
     U0init(9600); //Setting the UART Baud Rate
@@ -404,7 +404,7 @@ void reset(){
 }
 
 /**
- * @brief 
+ * @brief On/off toggle state, sets to DISABLED no matter the satte.
  * 
  */
 void toggleState(){
@@ -421,9 +421,9 @@ void toggleState(){
  */
  
  /**
-  * @brief 
+  * @brief Prints out the current time from the RTC.
   * 
-  * @param now 
+  * @param now The rtc DateTime object
   */
  void dateTimePrint(DateTime now){
     unsigned char value_buffer[50];
@@ -450,9 +450,9 @@ void toggleState(){
  }
 
 /**
- * @brief 
+ * @brief dateTimePrint()  but with a newline!
  * 
- * @param now 
+ * @param now The RTC DateTime object containing information.
  */
  void dateTimePrintln(DateTime now){
     dateTimePrint(now);
