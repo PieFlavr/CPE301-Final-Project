@@ -64,11 +64,13 @@ volatile unsigned char* my_ADCSRA = (unsigned char*) 0x7A;   // ADC Control and 
 volatile unsigned int* my_ADC_DATA = (unsigned int*) 0x78;   // ADC Data Register
 
 /**
- * Interrupt/Reset Button (Definitions/Includes)
+ * Interrupt/Reset/ON-OFF Button (Definitions/Includes)
  */
-volatile unsigned char* DDR_D = (unsigned char*) 0x2A;  // PWM PIN 2
-volatile unsigned char* PORT_D = (unsigned char*) 0x2B;
-const int resetPin = 2; // Reset button pin
+volatile unsigned char* DDR_D = (unsigned char*) 0x2A;  // For PWM PIN 2 and 3
+volatile unsigned char* PORT_D = (unsigned char*) 0x2B; // OUT
+volatile unsigned char* PIN_D = (unsigned char*) 0x09; // READ
+volatile const int resetPin = 2; // Reset button pin
+volatile const int togglePin = 3; //ON-OFF button pin
 volatile int resetti = 0; // Reset counter
 
 /**
@@ -101,6 +103,17 @@ void U0putchar(unsigned char U0pdata); // Function to send a character through U
 void UART_print(unsigned char* cstring); // Function to print string over UART
 void ADC_setup(); // Function to initialize ADC conversion
 
+/**
+ * System State Information
+ */
+volatile int stateNum = 0; //DISABLED(Y) = 0, IDLE(G) = 1,RUNNING(B) = 2, ERROR(R) = 3
+volatile const int waterLevelThreshold = 75; //Errors if below water level; based on 100 and 300 lower/upper bound measurement
+volatile const int tempThreshold = 21; //Going above should turn fan motor ON
+
+volatile int waterLevel = 0; //Current System State Information
+volatile int temperature = 0;
+volatile int humidity = 0;
+
 void setup(){
     U0init(9600); //Setting the UART Baud Rate
 
@@ -109,7 +122,7 @@ void setup(){
     display.begin(16,2); // Initialize LCD (16 columns, 2 rows)
     display.clear(); // Clear LCD screen
 
-    // LED Testing (DIGITAL 30,32,34,36 respectively)
+    // LED Testing (DIGITAL 30,32,34,36 respectively) RYGB order
     writeRegister(DDR_C, 7, 1); // Set pin to OUTPUT
     writeRegister(DDR_C, 5, 1);
     writeRegister(DDR_C, 3, 1);
@@ -124,6 +137,9 @@ void setup(){
     pinMode(fanSpeedPIN, OUTPUT); // Set fan speed pin as OUTPUT
     pinMode(fanDIR1, OUTPUT); // Set fan direction pin 1 as OUTPUT
     pinMode(fanDIR2, OUTPUT); // Set fan direction pin 2 as OUTPUT
+
+    digitalWrite(fanDIR1, LOW); // Set fan direction
+    digitalWrite(fanDIR2, HIGH);
 
     // Analog Read Setup (for water level sensor and potentiometer)
     ADC_setup();
@@ -140,6 +156,10 @@ void setup(){
     writeRegister(PORT_D, 2, 1); // Enable pull-up resistor
     attachInterrupt(digitalPinToInterrupt(resetPin), reset, FALLING); // Attach interrupt to reset pin
 
+    writeRegister(DDR_D, 3, 0); // Set ON/OFF pin as input
+    writeRegister(PORT_D, 3, 1); // Enable pull-up resistor
+    attachInterrupt(digitalPinToInterrupt(togglePin), toggleState, FALLING); // Attach interrupt to ON/OFF pin
+
     // RTC time sync
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
 
@@ -151,55 +171,105 @@ void loop(){
 
     // Temperature Sensing (DHT11 sensor)
     int chk = DHT_Sensor.read11(DHT11_PIN); // Read sensor data
-    int temperature = DHT_Sensor.temperature; // Get temperature reading
-    int humidity = DHT_Sensor.humidity; // Get humidity reading
+    temperature = DHT_Sensor.temperature; // Get temperature reading
+    humidity = DHT_Sensor.humidity; // Get humidity reading
 
     // Interrupt Testing (output reset count)
-    sprintf(value_buffer, "%d", resetti); // Convert reset count to string
+    sprintf(value_buffer, "%d", stateNum); // Convert reset count to string
     UART_print("The hell???:: ");
     UART_println(value_buffer);
 
     // LCD Printout
     display.clear(); // Clear display
+    if(stateNum == 0){ //DISABLED MESSAGED
+      display.setCursor(0, 0); // Set cursor to row 0, column 0
+      display.print("DISABLED");
+    } else if(stateNum == 1 || stateNum == 2){
+      display.setCursor(0, 0); // Set cursor to row 0, column 0
+      display.print("TEMP:: ");
+      display.print(temperature); // Display temperature
+      display.print("C");
 
-    display.setCursor(0, 0); // Set cursor to row 0, column 0
-    display.print("TEMP:: ");
-    display.print(temperature); // Display temperature
-    display.print("C");
-
-    display.setCursor(0, 1); // Set cursor to row 1, column 0
-    display.print("HUMIDITY:: ");
-    display.print(humidity); // Display humidity
-    display.print("%");
+      display.setCursor(0, 1); // Set cursor to row 1, column 0
+      display.print("HUMIDITY:: ");
+      display.print(humidity); // Display humidity
+      display.print("%");
+    } else if (stateNum == 3) { //ERROR MESSAGE
+      display.setCursor(0, 0); // Set cursor to row 0, column 0
+      display.print("Water level");
+      display.setCursor(0, 1); // Set cursor to row 1, column 0
+      display.print("is too low!");
+    }
 
     // TEMPORARY WATER LEVEL TESTING
     writeRegister(PORT_G, 1, 1); // Set water level sensor (DIGITAL PIN 40) to ON
 
-    int rawWaterLevel = adc_read(1); // 100 lower bound, 300 upper bound calibration
+    waterLevel = adc_read(1); // 100 lower bound, 300 upper bound calibration
 
-    sprintf(value_buffer, "%d", rawWaterLevel); // Convert raw water level to string
+    sprintf(value_buffer, "%d", waterLevel); // Convert raw water level to string
     UART_print("Water Level Raw Value:: ");
     UART_println(value_buffer); // Print water level value
 
     writeRegister(PORT_G, 1, 0); // Set water level sensor pin to OFF
 
-    // Fan Motor Testing (Run fan)
-    digitalWrite(fanDIR1, LOW); // Set fan direction
-    digitalWrite(fanDIR2, HIGH);
-    analogWrite(fanSpeedPIN, 255); // Set fan speed to full
-
-    // Stepper Motor Testing (Control stepper motor based on potentiometer)
-    int stepperControl = adc_read(2); // Read potentiometer (analog A2)
-    if(stepperControl >= 800){
-        ventMotor.step(100); // Step motor forward
-    } else if (stepperControl <= 200){
-        ventMotor.step(-100); // Step motor backward
-    }
-
     // RTC Testing (optional code for RTC display)
     DateTime now = rtc.now();
     dateTimePrintln(now);
 
+    // LED State Display (DISABLED(Y) = 0, IDLE(G) = 1,RUNNING(B) = 2, ERROR(R) = 3)
+    if(stateNum == 0){  // DISABLED (YELLOW)
+      writeRegister(PORT_C, 5, 1);
+      writeRegister(PORT_C, 7, 0); 
+      writeRegister(PORT_C, 3, 0);
+      writeRegister(PORT_C, 1, 0);
+    } else if(stateNum == 1) { // IDLE (GREEN)
+      writeRegister(PORT_C, 3, 1);
+      writeRegister(PORT_C, 7, 0); 
+      writeRegister(PORT_C, 5, 0);
+      writeRegister(PORT_C, 1, 0);
+    } else if(stateNum == 2){ // RUNNING (BLUE)
+      writeRegister(PORT_C, 1, 1);
+      writeRegister(PORT_C, 7, 0); 
+      writeRegister(PORT_C, 5, 0);
+      writeRegister(PORT_C, 3, 0);
+    } else if(stateNum == 3){ // ERROR (RED)
+      writeRegister(PORT_C, 7, 1); 
+      writeRegister(PORT_C, 5, 0);
+      writeRegister(PORT_C, 3, 0);
+      writeRegister(PORT_C, 1, 0);
+    }
+
+    if(stateNum == 1){ //IDLE STATE
+      if(waterLevel <= waterLevelThreshold){
+        stateNum = 3;
+      } else if(temperature > tempThreshold){
+        stateNum = 2;
+      }
+    } else if(stateNum == 2){ //RUNING STATE
+      if(waterLevel <= waterLevelThreshold){
+        stateNum = 3;
+      } else if(temperature <= tempThreshold){
+        stateNum = 1;
+      }
+    } //ERROR and DISABLED state handled by reset() and toggleState()
+    
+    if(stateNum == 2){
+        // Fan Motor Testing (Run fan)
+      analogWrite(fanSpeedPIN, 255); // Set fan speed to full
+    } else {
+      analogWrite(fanSpeedPIN, 0); // Stop fan
+    }
+    
+    if(stateNum != 3){
+      // Stepper Motor Testing (Control stepper motor based on potentiometer)
+      int stepperControl = adc_read(2); // Read potentiometer (analog A2)
+      if(stepperControl >= 800){
+          ventMotor.step(100); // Step motor forward
+      } else if (stepperControl <= 200){
+          ventMotor.step(-100); // Step motor backward
+      }
+    }
+    
     delay(500);
 }
 
@@ -276,12 +346,30 @@ void writeRegister(unsigned char* address, int bit, int value) {
 }
 
 /**
+ * INTERRUPT FUNCTIONs
+ */
+
+/**
  * @brief Resets the reset counter on a button press.
  *        This function is triggered by an interrupt from a reset button.
  *        It increments a global variable `resetti` each time it is called.
  */
 void reset(){
-    resetti++; // Increment reset count on button press
+  if(stateNum == 3){
+    stateNum = 1;
+  }
+}
+
+/**
+ * @brief 
+ * 
+ */
+void toggleState(){
+  if(stateNum == 0){
+    stateNum = 1;
+  } else {
+    stateNum = 0;
+  }
 }
 
 /**
