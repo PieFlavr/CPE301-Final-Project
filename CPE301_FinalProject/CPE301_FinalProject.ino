@@ -291,18 +291,6 @@ void writeRegister(unsigned char* address, int bit, int value) {
 }
 
 /**
- * ADC Read Function
- * @param adc_channel_num ADC Channel to read
- * @return Read value from ADC
- */
-unsigned int adc_read(unsigned char adc_channel_num){
-    *my_ADMUX = adc_channel_num; // Set the ADC channel
-    *my_ADCSRA |= (1<<ADSC); // Start conversion
-    while((*my_ADCSRA & (1<<ADSC)) != 0); // Wait for conversion to finish
-    return *my_ADC_DATA; // Return the conversion result
-}
-
-/**
  * Interrupt function for reset button
  */
 void reset(){
