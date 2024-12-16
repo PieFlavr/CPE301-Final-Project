@@ -175,11 +175,11 @@ void loop(){
     // TEMPORARY WATER LEVEL TESTING
     writeRegister(PORT_G, 1, 1); // Set water level sensor (DIGITAL PIN 40) to ON
 
-    int rawWaterLevel = adc_read(1); // Read water level (analog A1)
+    int rawWaterLevel = adc_read(1); // 100 lower bound, 300 upper bound calibration
 
     sprintf(value_buffer, "%d", rawWaterLevel); // Convert raw water level to string
     UART_print("Water Level Raw Value:: ");
-    UART_println(value_buffer); // Print water level value
+    //UART_println(value_buffer); // Print water level value
     Serial.println(rawWaterLevel);
     
 
@@ -239,16 +239,54 @@ void ADC_setup()
 }
 
 /**
- * Write to register
- * @param address Address of the register
- * @param bit Bit to be modified
- * @param value Value to be written to the bit
+ * @brief Reads a specific bit from a register. 
+ * 
+ * @param address Pointer to the register's address.
+ * @param bit The bit position to read (0-7).
+ * @return int Returns 1 if the bit is set, 0 otherwise.
  */
-void writeRegister(unsigned char* address, int bit, int value){
-    if (value){
-        *address |= (1 << bit); // Set the bit
+unsigned int readRegister(unsigned char* address, int bit) {
+    //Returns 1 if the bit is set, 0 otherwise
+    return (*address & (1 << bit)) ? 1 : 0;  
+}
+
+/**
+ * @brief Uses the ADC to read and return the analog data !!!REDO COMMENTS!!!
+ * 
+ * @param ADC_PIN The specific analog pin number being read from.
+ * @return unsigned int Returns a range from 0 to 1023
+ */
+unsigned int adc_read(unsigned char adc_channel_num)
+{
+  *my_ADMUX  &= 0b11100000;   // Clear channel selection bits (MUX 4:0)
+  *my_ADCSRB &= 0b11110111;   // Clear MUX 5 bit
+
+  if(adc_channel_num > 7)
+  {
+    adc_channel_num -= 8;        // Adjust channel number for high channels
+    *my_ADCSRB |= 0b00001000;    // Set MUX 5 bit for high channels
+  }
+  
+  *my_ADMUX  += adc_channel_num; // Set MUX bits to select the channel
+  *my_ADCSRA |= 0x40;            // Start ADC conversion by setting bit 6
+
+  while((*my_ADCSRA & 0x40) != 0); // Wait for conversion to complete
+
+  return *my_ADC_DATA;           // Return ADC result
+}
+
+/**
+ * @brief Writes a specific value (1 or 0) to a bit in a register.
+ * 
+ * @param address Pointer to the register's address.
+ * @param bit The bit position to modify (0-7).
+ * @param value The value to write (1 to set the bit, 0 to clear it).
+ */
+void writeRegister(unsigned char* address, int bit, int value) {
+    if (value == 1) {
+        *address |= (1 << bit);  //Set the bit to 1 (HIGH)
     } else {
-        *address &= ~(1 << bit); // Clear the bit
+        *address &= ~(1 << bit);  //Set the bit to 0 (LOW)
     }
 }
 
