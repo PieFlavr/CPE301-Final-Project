@@ -1,5 +1,3 @@
-// CPE 301 Final Project
-// Written by Lucas Pinto and Finn Campbell
 /**
  * @file CPE301_FinalProject.ino
  * @author Lucas Pinto and Finn Campbell
@@ -24,8 +22,8 @@ LiquidCrystal display(RS, EN, D4, D5, D6, D7);
  * DIGITAL PINs 30-37 correspond to BITs 7-0 
  * ..> (30~7 ; 31~6 ; 32~5 ; 33~4 ; 34~3 ; 35~2 ; 36~1 ; 37~0)
  */
-volatile unsigned char* PORT_C = (unsigned char*) 0x28;
-volatile unsigned char* DDR_C = (unsigned char*) 0x27; 
+volatile unsigned char* PORT_C = (unsigned char*) 0x28; //WRITE address, 0x08 is READ!!!
+volatile unsigned char* DDR_C = (unsigned char*) 0x27; //WRITE address, 0x07 is READ!!!
 
 /**
  * Stepper Motor !!!NEED DOCUMENTATION/REFERENCE SHEET NEEDED!!!
@@ -44,6 +42,8 @@ const int fanSpeedPIN = 12, fanDIR1 = 11, fanDIR2 = 13, fanSpeed = 90;
  */
 #include <dht.h>
 const int DHT11_PIN = 54; //Pin A0
+volatile unsigned char* PORT_G = (unsigned char*) 0x34; //WRITE adddres, 0x14 is READ!!!
+volatile unsigned char* DDR_G = (unsigned char*) 0x33; //WRITE address, 0x13 is READ!!!
 dht DHT_Sensor;
 
 /**
@@ -83,27 +83,31 @@ void setup(){
     display.write("Hello World!");
 
     // LED Testing (DIGITAL 30,32,34,36 respectively)
-    writeRegister(DDR_C, 7, 1);
+    writeRegister(DDR_C, 7, 1); //Set to OUTPUT
     writeRegister(DDR_C, 5, 1);
     writeRegister(DDR_C, 3, 1);
     writeRegister(DDR_C, 1, 1);
 
-    writeRegister(PORT_C, 7, 0);
+    writeRegister(PORT_C, 7, 0); //Set to OFF
     writeRegister(PORT_C, 5, 0);
     writeRegister(PORT_C, 3, 0);
     writeRegister(PORT_C, 1, 0);
 
     //Stepper Motor Testing
-    //ventMotor.setSpeed(5);
-    //ventMotor.step(stepsPerRevolution);
+    ventMotor.setSpeed(5);
+    ventMotor.step(stepsPerRevolution);
 
-    //Fan Motor Testing
+    //Fan Motor Testing, !!!not sure if library is allowed ???!!!
     pinMode(fanSpeedPIN, OUTPUT);
     pinMode(fanDIR1, OUTPUT);
     pinMode(fanDIR2, OUTPUT);
 
     //Analog Read Setup
     ADC_setup();
+
+    //Water Level Sensor
+    writeRegister(DDR_G, 1, 1); //Set to OUTPUT
+    writeRegister(PORT_G, 1, 0); //Set to OFF
 }
 
 void loop(){
@@ -126,8 +130,10 @@ void loop(){
     display.print("%");
 
     //TEMPORARY WATER LEVEL TESTING
+    writeRegister(PORT_G, 1, 1); //Set to ON
     int testValue = adc_read(1);
     Serial.println(testValue); //100 lower bound, 300 upper bound calibration
+    writeRegister(PORT_G, 1, 0); //Set to OFF
 
     //Fan Motor Testing
     digitalWrite(fanDIR1,LOW);
@@ -151,7 +157,7 @@ void loop(){
     Serial.print(now.second(), DEC);
     Serial.println();
 
-    delay(100);
+    delay(500);
 }
 
 ISR(TIMER1_OVF_vect)
