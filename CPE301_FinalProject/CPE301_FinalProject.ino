@@ -114,6 +114,14 @@ volatile int waterLevel = 0; //Current System State Information
 volatile int temperature = 0;
 volatile int humidity = 0;
 
+volatile bool fanState = 0; //For printing out information on fan/stepper transition.
+volatile bool previousFanState = 0; //OFF = 0, ON = 1 
+volatile bool stepperState = 0;
+volatile bool previousStepperState = 0;
+
+volatile unsigned long previousTime = 0;
+volatile const long updateTime = 60000;
+
 void setup(){
     U0init(9600); //Setting the UART Baud Rate
 
@@ -167,6 +175,8 @@ void setup(){
 }
 
 void loop(){
+    unsigned long currentTime = millis(); //Time check
+
     unsigned char value_buffer[50]; // Buffer to convert numbers to printable strings
 
     // Temperature Sensing (DHT11 sensor)
@@ -174,26 +184,27 @@ void loop(){
     temperature = DHT_Sensor.temperature; // Get temperature reading
     humidity = DHT_Sensor.humidity; // Get humidity reading
 
-    // Interrupt Testing (output reset count)
-    sprintf(value_buffer, "%d", stateNum); // Convert reset count to string
-    UART_print("The hell???:: ");
-    UART_println(value_buffer);
-
     // LCD Printout
     display.clear(); // Clear display
+
     if(stateNum == 0){ //DISABLED MESSAGED
       display.setCursor(0, 0); // Set cursor to row 0, column 0
       display.print("DISABLED");
     } else if(stateNum == 1 || stateNum == 2){
-      display.setCursor(0, 0); // Set cursor to row 0, column 0
-      display.print("TEMP:: ");
-      display.print(temperature); // Display temperature
-      display.print("C");
+      if(currentTime - previousTime >= updateTime){
+        display.setCursor(0, 0); // Set cursor to row 0, column 0
+        display.print("TEMP:: ");
+        display.print(temperature); // Display temperature
+        display.print("C");
 
-      display.setCursor(0, 1); // Set cursor to row 1, column 0
-      display.print("HUMIDITY:: ");
-      display.print(humidity); // Display humidity
-      display.print("%");
+        display.setCursor(0, 1); // Set cursor to row 1, column 0
+        display.print("HUMIDITY:: ");
+        display.print(humidity); // Display humidity
+        display.print("%");
+
+        previousTime = currentTime; //Save last update time 
+      }
+      
     } else if (stateNum == 3) { //ERROR MESSAGE
       display.setCursor(0, 0); // Set cursor to row 0, column 0
       display.print("Water level");
@@ -201,20 +212,12 @@ void loop(){
       display.print("is too low!");
     }
 
-    // TEMPORARY WATER LEVEL TESTING
+    // Water Level Measuring
     writeRegister(PORT_G, 1, 1); // Set water level sensor (DIGITAL PIN 40) to ON
 
     waterLevel = adc_read(1); // 100 lower bound, 300 upper bound calibration
 
-    sprintf(value_buffer, "%d", waterLevel); // Convert raw water level to string
-    UART_print("Water Level Raw Value:: ");
-    UART_println(value_buffer); // Print water level value
-
     writeRegister(PORT_G, 1, 0); // Set water level sensor pin to OFF
-
-    // RTC Testing (optional code for RTC display)
-    DateTime now = rtc.now();
-    dateTimePrintln(now);
 
     // LED State Display (DISABLED(Y) = 0, IDLE(G) = 1,RUNNING(B) = 2, ERROR(R) = 3)
     if(stateNum == 0){  // DISABLED (YELLOW)
@@ -253,24 +256,52 @@ void loop(){
       }
     } //ERROR and DISABLED state handled by reset() and toggleState()
     
-    if(stateNum == 2){
-        // Fan Motor Testing (Run fan)
+    if(stateNum == 2){ // Fan Motor Testing (Run fan)
+      fanState = 1;
       analogWrite(fanSpeedPIN, 255); // Set fan speed to full
     } else {
+      fanState = 0;
       analogWrite(fanSpeedPIN, 0); // Stop fan
     }
     
-    if(stateNum != 3){
-      // Stepper Motor Testing (Control stepper motor based on potentiometer)
+    if(stateNum != 3){ // Stepper Motor Testing (Control stepper motor based on potentiometer)
       int stepperControl = adc_read(2); // Read potentiometer (analog A2)
       if(stepperControl >= 800){
+          stepperState = 1;
           ventMotor.step(100); // Step motor forward
       } else if (stepperControl <= 200){
+          stepperState = 1;
           ventMotor.step(-100); // Step motor backward
+      } else {
+          stepperState = 0;
       }
     }
+
+    // RTC Time Record for Fan/Stepper Transition
+    DateTime now = rtc.now();
     
-    delay(500);
+    if(previousFanState != fanState){ //Check for fan transition for RTC printout
+      dateTimePrint(now);
+      UART_print(": ");
+      if(previousFanState == 0){
+        UART_println("Fan was turned ON!");
+      } else {
+        UART_println("Fan was turned OFF!");
+      }
+    } 
+
+    if(previousStepperState != stepperState){ //Check for fan transition for RTC printout
+      dateTimePrint(now);
+      UART_print(": ");
+      if(previousStepperState == 0){
+        UART_println("Vent started changing position/Stepper Motor turned on!");
+      } else {
+        UART_println("Vent stopped changing position/Stepper Motor turned off!");
+      }
+    } 
+
+    previousFanState = fanState;
+    previousStepperState = stepperState;
 }
 
 /**
