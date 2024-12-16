@@ -2,7 +2,7 @@
  * @file CPE301_FinalProject.ino
  * @author Lucas Pinto and Finn Campbell
  * @brief Final project for CPE301 Fall 2024. 
- *          TO-DO-LIST : clean up everything, implement systems mechanics, push-button interrupt, and potentiometer reading for stepper motor adjust.
+ *  
  * @version 1.0
  * @date 2024-12-15
  * 
@@ -114,13 +114,16 @@ volatile int waterLevel = 0; //Current System State Information
 volatile int temperature = 0;
 volatile int humidity = 0;
 
+volatile int tempDisplay = 0; //Displayed temperature and humidity
+volatile int humidityDisplay = 0; //Fan decisions ar ealso made with this
+
 volatile bool fanState = 0; //For printing out information on fan/stepper transition.
 volatile bool previousFanState = 0; //OFF = 0, ON = 1 
 volatile bool stepperState = 0;
 volatile bool previousStepperState = 0;
 
 volatile unsigned long previousTime = 0;
-volatile const long updateTime = 60000;
+volatile const long updateTime = 6000; //About a minute
 
 void setup(){
     U0init(9600); //Setting the UART Baud Rate
@@ -175,7 +178,7 @@ void setup(){
 }
 
 void loop(){
-    unsigned long currentTime = millis(); //Time check
+    unsigned long currentTime; //Time State
 
     unsigned char value_buffer[50]; // Buffer to convert numbers to printable strings
 
@@ -191,19 +194,26 @@ void loop(){
       display.setCursor(0, 0); // Set cursor to row 0, column 0
       display.print("DISABLED");
     } else if(stateNum == 1 || stateNum == 2){
-      if(currentTime - previousTime >= updateTime){
-        display.setCursor(0, 0); // Set cursor to row 0, column 0
-        display.print("TEMP:: ");
-        display.print(temperature); // Display temperature
-        display.print("C");
+      currentTime = millis(); //Time check!
 
-        display.setCursor(0, 1); // Set cursor to row 1, column 0
-        display.print("HUMIDITY:: ");
-        display.print(humidity); // Display humidity
-        display.print("%");
+      if(currentTime - previousTime >= updateTime || previousTime == 0){ //Updates every minute or on first reading
+        tempDisplay = temperature;
+        humidityDisplay = humidity;
 
         previousTime = currentTime; //Save last update time 
-      }
+      }      
+
+      display.setCursor(0, 0); // Set cursor to row 0, column 0
+      display.print("TEMP:: ");
+      display.print(tempDisplay); // Display temperature
+      display.print("C");
+
+      display.setCursor(0, 1); // Set cursor to row 1, column 0
+      display.print("HUMIDITY:: ");
+      display.print(humidityDisplay); // Display humidity
+      display.print("%");
+
+        
       
     } else if (stateNum == 3) { //ERROR MESSAGE
       display.setCursor(0, 0); // Set cursor to row 0, column 0
@@ -218,6 +228,29 @@ void loop(){
     waterLevel = adc_read(1); // 100 lower bound, 300 upper bound calibration
 
     writeRegister(PORT_G, 1, 0); // Set water level sensor pin to OFF
+
+    //STATE UPDATE CHECK
+    if(stateNum == 1){ //IDLE STATE
+      if(waterLevel <= waterLevelThreshold){
+        stateNum = 3;
+      } else if(tempDisplay > tempThreshold){
+        stateNum = 2;
+      }
+    } else if(stateNum == 2){ //RUNING STATE
+      if(waterLevel <= waterLevelThreshold){
+        stateNum = 3;
+      } else if(tempDisplay <= tempThreshold){
+        stateNum = 1;
+      }
+    } //ERROR and DISABLED state handled by reset() and toggleState()
+    
+    if(stateNum == 2){ // Fan Motor Testing (Run fan)
+      fanState = 1;
+      analogWrite(fanSpeedPIN, 255); // Set fan speed to full
+    } else {
+      fanState = 0;
+      analogWrite(fanSpeedPIN, 0); // Stop fan
+    }
 
     // LED State Display (DISABLED(Y) = 0, IDLE(G) = 1,RUNNING(B) = 2, ERROR(R) = 3)
     if(stateNum == 0){  // DISABLED (YELLOW)
@@ -240,28 +273,6 @@ void loop(){
       writeRegister(PORT_C, 5, 0);
       writeRegister(PORT_C, 3, 0);
       writeRegister(PORT_C, 1, 0);
-    }
-
-    if(stateNum == 1){ //IDLE STATE
-      if(waterLevel <= waterLevelThreshold){
-        stateNum = 3;
-      } else if(temperature > tempThreshold){
-        stateNum = 2;
-      }
-    } else if(stateNum == 2){ //RUNING STATE
-      if(waterLevel <= waterLevelThreshold){
-        stateNum = 3;
-      } else if(temperature <= tempThreshold){
-        stateNum = 1;
-      }
-    } //ERROR and DISABLED state handled by reset() and toggleState()
-    
-    if(stateNum == 2){ // Fan Motor Testing (Run fan)
-      fanState = 1;
-      analogWrite(fanSpeedPIN, 255); // Set fan speed to full
-    } else {
-      fanState = 0;
-      analogWrite(fanSpeedPIN, 0); // Stop fan
     }
     
     if(stateNum != 3){ // Stepper Motor Testing (Control stepper motor based on potentiometer)
