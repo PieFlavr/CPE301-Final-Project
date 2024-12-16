@@ -36,7 +36,8 @@ Stepper  ventMotor = Stepper(stepsPerRevolution, 45, 49, 47, 51); // Initialize 
  * Fan Motor + L293D Driver (Definitions/Includes)
  */
 const int fanSpeedPIN = 12, fanDIR1 = 11, fanDIR2 = 13, fanSpeed = 90; // Pins for controlling fan motor speed and direction
-
+volatile unsigned char* PORT_B = (unsigned char*) 0x25; //WRITE address, 0x08 is READ!!!
+volatile unsigned char* DDR_B = (unsigned char*) 0x24; //WRITE address, 0x07 is READ!!!
 /**
  * DHT11 Water Sensor (Definitions/Includes)
  */
@@ -144,13 +145,13 @@ void setup(){
     writeRegister(PORT_C, 3, 0);
     writeRegister(PORT_C, 1, 0);
 
-    // Fan Motor Testing
-    pinMode(fanSpeedPIN, OUTPUT); // Set fan speed pin as OUTPUT
-    pinMode(fanDIR1, OUTPUT); // Set fan direction pin 1 as OUTPUT
-    pinMode(fanDIR2, OUTPUT); // Set fan direction pin 2 as OUTPUT
+    // Fan Motor 
+    writeRegister(DDR_B,6,1); //Set pin 12 to OUTPUT
+    writeRegister(DDR_B,5,1); // pin 11
+    writeRegister(DDR_B,7,1); // pin13
 
-    digitalWrite(fanDIR1, LOW); // Set fan direction
-    digitalWrite(fanDIR2, HIGH);
+    writeRegister(PORT_B,5,0); //Set fan directions
+    writeRegister(PORT_B,7,1); 
 
     // Analog Read Setup (for water level sensor and potentiometer)
     ADC_setup();
