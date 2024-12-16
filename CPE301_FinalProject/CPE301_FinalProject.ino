@@ -179,9 +179,7 @@ void loop(){
 
     sprintf(value_buffer, "%d", rawWaterLevel); // Convert raw water level to string
     UART_print("Water Level Raw Value:: ");
-    //UART_println(value_buffer); // Print water level value
-    Serial.println(rawWaterLevel);
-    
+    UART_println(value_buffer); // Print water level value
 
     writeRegister(PORT_G, 1, 0); // Set water level sensor pin to OFF
 
@@ -199,21 +197,8 @@ void loop(){
     }
 
     // RTC Testing (optional code for RTC display)
-    // DateTime now = rtc.now();
-    // Serial.print(now.year(), DEC);
-    // Serial.print('/');
-    // Serial.print(now.month(), DEC);
-    // Serial.print('/');
-    // Serial.print(now.day(), DEC);
-    // Serial.print(" (");
-    // Serial.print(daysOfTheWeek[now.dayOfTheWeek()]);
-    // Serial.print(") ");
-    // Serial.print(now.hour(), DEC);
-    // Serial.print(':');
-    // Serial.print(now.minute(), DEC);
-    // Serial.print(':');
-    // Serial.print(now.second(), DEC);
-    // Serial.println();
+    DateTime now = rtc.now();
+    dateTimePrintln(now);
 
     delay(500);
 }
@@ -298,6 +283,55 @@ void writeRegister(unsigned char* address, int bit, int value) {
 void reset(){
     resetti++; // Increment reset count on button press
 }
+
+/**
+ * PRINT FUNCTIONs 
+ * 
+ */
+ 
+ /**
+  * @brief 
+  * 
+  * @param now 
+  */
+ void dateTimePrint(DateTime now){
+    unsigned char value_buffer[50];
+    sprintf(value_buffer, "%d", now.year()); // Convert raw water level to string
+    UART_print(value_buffer);
+    UART_print("/");
+    sprintf(value_buffer, "%d", now.month()); // Convert raw water level to string
+    UART_print(value_buffer);
+    UART_print("/");
+    sprintf(value_buffer, "%d", now.day()); // Convert raw water level to string
+    UART_print(value_buffer);
+    UART_print(" (");
+    UART_print(daysOfTheWeek[now.dayOfTheWeek()]);
+    UART_print(") ");
+    sprintf(value_buffer, "%d", now.hour()); // Convert raw water level to string
+    UART_print(value_buffer);
+    UART_print(":");
+    sprintf(value_buffer, "%d", now.minute()); // Convert raw water level to string
+    UART_print(value_buffer);
+    UART_print(":");
+    sprintf(value_buffer, "%d", now.second()); // Convert raw water level to string
+    UART_print(value_buffer);
+    UART_print("");
+ }
+
+/**
+ * @brief 
+ * 
+ * @param now 
+ */
+ void dateTimePrintln(DateTime now){
+    dateTimePrint(now);
+    UART_println("");
+ }
+
+
+/**
+ *  UART FUNCTIONs
+ */
 
 /**
  * @brief Initializes the UART0 communication with a specified baud rate.
