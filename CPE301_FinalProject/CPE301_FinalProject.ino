@@ -30,7 +30,7 @@ volatile unsigned char* DDR_C = (unsigned char*) 0x27; //WRITE address, 0x07 is 
  */
 #include <Stepper.h>
 const int stepsPerRevolution = 2038;
-Stepper  ventMotor = Stepper(stepsPerRevolution, 45, 47, 49, 51);
+Stepper  ventMotor = Stepper(stepsPerRevolution, 45, 49, 47, 51);
 
 /**
  * Fan Motor !!!NEED DOCUMENTATION/REFERENCE SHEET NEEDDED!!!
@@ -93,10 +93,6 @@ void setup(){
     writeRegister(PORT_C, 3, 0);
     writeRegister(PORT_C, 1, 0);
 
-    //Stepper Motor Testing
-    ventMotor.setSpeed(5);
-    ventMotor.step(stepsPerRevolution);
-
     //Fan Motor Testing, !!!not sure if library is allowed ???!!!
     pinMode(fanSpeedPIN, OUTPUT);
     pinMode(fanDIR1, OUTPUT);
@@ -108,6 +104,9 @@ void setup(){
     //Water Level Sensor
     writeRegister(DDR_G, 1, 1); //Set to OUTPUT
     writeRegister(PORT_G, 1, 0); //Set to OFF
+
+    //Vent Mottor Init
+    ventMotor.setSpeed(5);
 }
 
 void loop(){
@@ -131,14 +130,26 @@ void loop(){
 
     //TEMPORARY WATER LEVEL TESTING
     writeRegister(PORT_G, 1, 1); //Set to ON
-    int testValue = adc_read(1);
-    Serial.println(testValue); //100 lower bound, 300 upper bound calibration
+    int rawWaterLevel = adc_read(1);
+    Serial.print("Water Level Raw Value:: ");
+    Serial.println(rawWaterLevel); //100 lower bound, 300 upper bound calibration
     writeRegister(PORT_G, 1, 0); //Set to OFF
 
     //Fan Motor Testing
     digitalWrite(fanDIR1,LOW);
     digitalWrite(fanDIR2,HIGH);
     analogWrite(fanSpeedPIN,0);
+
+    //Stepper Motor Testing
+    int stepperControl = adc_read(2); //200 lower bound, 800 upper bound for "up" and "down"
+    Serial.print("Stepper Control Raw Value:: ");
+    Serial.println(stepperControl);
+    if(stepperControl >= 800){
+      ventMotor.step(100);
+    } else if (stepperControl <= 200){
+      ventMotor.step(-100);
+    }
+    
 
     //RTC Testing
     DateTime now = rtc.now();
