@@ -291,45 +291,83 @@ void writeRegister(unsigned char* address, int bit, int value) {
 }
 
 /**
- * Interrupt function for reset button
+ * @brief 
+ * 
  */
 void reset(){
     resetti++; // Increment reset count on button press
 }
 
 /**
- * UART Functions
+ * @brief 
+ * 
+ * @param U0baud 
  */
-void U0init(int U0baud){
-    int ubrr = F_CPU / 16 / U0baud - 1;
-    *myUBRR0 = ubrr; // Set baud rate
-    *myUCSR0B = (1 << TXEN0) | (1 << RXEN0); // Enable transmitter and receiver
-    *myUCSR0C = (1 << UCSZ01) | (1 << UCSZ00); // 8 data bits, 1 stop bit
+void U0init(int U0baud)
+{
+ unsigned long FCPU = 16000000;           // CPU frequency
+ unsigned int tbaud = (FCPU / 16 / U0baud - 1); // Calculate baud rate
+
+ *myUCSR0A = 0x20; // Set UART Control and Status Register A
+ *myUCSR0B = 0x18; // Enable receiver and transmitter
+ *myUCSR0C = 0x06; // Set UART mode and data format
+ *myUBRR0  = tbaud; // Set calculated baud rate
 }
 
-unsigned char U0kbhit(){
-    return (*myUCSR0A & RDA); // Check if data is ready to be received
+/**
+ * @brief 
+ * 
+ * @return unsigned char 
+ */
+unsigned char U0kbhit()
+{
+  return *myUCSR0A & RDA; // Check RDA flag
 }
 
-unsigned char U0getchar(){
-    while(!U0kbhit()); // Wait for data to be available
-    return *myUDR0; // Return received byte
+/**
+ * @brief 
+ * 
+ * @return unsigned char 
+ */
+unsigned char U0getchar()
+{
+  return *myUDR0; // Return data from UART Data Register
 }
 
-void U0putchar(unsigned char U0pdata){
-    while(!(*myUCSR0A & TBE)); // Wait for previous transmission to complete
-    *myUDR0 = U0pdata; // Send the byte
+/**
+ * @brief 
+ * 
+ * @param U0pdata 
+ */
+void U0putchar(unsigned char U0pdata)
+{
+  while((*myUCSR0A & TBE) == 0); // Wait until transmit buffer is empty
+  *myUDR0 = U0pdata;             // Load data into UART Data Register
 }
 
+/**
+ * @brief 
+ * 
+ * @param cstring 
+ */
 void UART_print(unsigned char* cstring){
-    while(*cstring != 0){
-        U0putchar(*cstring); // Send each character
-        cstring++;
-    }
+  int i = 0;
+  while(cstring[i] != '\0'){      // Loop until null terminator
+    U0putchar((unsigned char)(cstring[i])); // Transmit each character
+    i++;
+  }
 }
 
+/**
+ * @brief 
+ * 
+ * @param cstring 
+ */
 void UART_println(unsigned char* cstring){
-    UART_print(cstring); // Print string
-    U0putchar(0x0D); // New line
-    U0putchar(0x0A); // Line feed
+  int i = 0;
+  while(cstring[i] != '\0'){      // Loop until null terminator
+    U0putchar((unsigned char)(cstring[i])); // Transmit each character
+    i++;
+  }
+  U0putchar('\n');
 }
